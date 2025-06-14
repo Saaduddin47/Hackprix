@@ -3,18 +3,14 @@ from flask_cors import CORS
 import openai
 
 app = Flask(__name__)
-<<<<<<< HEAD
-openai.api_key = "YOUR_OPENAI_API_KEY"
-=======
-CORS(app)  # Allows your frontend (React) to make requests
+CORS(app)  # Allows your frontend (e.g., React) to access this backend
 
 # Set your OpenAI API Key
-openai.api_key = "Enter Your Api Key"
+openai.api_key = "YOUR_OPENAI_API_KEY"  # Replace with your actual key
 
 @app.route('/')
 def home():
     return 'Flask backend is running!'
->>>>>>> a3b7eb1 (Removed OpenAI API key)
 
 @app.route('/generate', methods=['POST'])
 def generate_design():
