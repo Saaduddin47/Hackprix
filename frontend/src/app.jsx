@@ -1,86 +1,34 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+# app.py
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import openai
+import os
+from dotenv import load_dotenv
 
-function App() {
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [generatedImg, setGeneratedImg] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+load_dotenv()
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
-  const convertToBase64 = (file) => new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result.split(",")[1]); // Remove data:image/png;base64,
-    reader.onerror = (error) => reject(error);
-  });
+app = Flask(__name__)
+CORS(app)
 
-  const handleGenerate = async () => {
-    setError("");
-    if (!selectedFile) {
-      setError("Please select a PNG image first.");
-      return;
-    }
+@app.route('/generate', methods=['POST'])
+def generate():
+    try:
+        image_file = request.files['image']
+        mask_file = request.files['mask']
+        prompt = request.form['prompt']
 
-    // Check if file is PNG
-    if (selectedFile.type !== "image/png") {
-      setError("Only PNG files are supported by OpenAI for variations.");
-      return;
-    }
+        response = openai.Image.create_edit(
+            image=image_file,
+            mask=mask_file,
+            prompt=prompt,
+            size="512x512",
+            n=1
+        )
 
-    try {
-      setLoading(true);
-      const base64 = await convertToBase64(selectedFile);
+        return jsonify({"url": response['data'][0]['url']})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-      const res = await axios.post("http://localhost:5000/generate", {
-        image: base64
-      });
-
-      if (res.data.generated_image) {
-        setGeneratedImg(res.data.generated_image);
-      } else {
-        setError("No image returned from API.");
-      }
-    } catch (err) {
-      setError("Error generating image. Check if your backend is running and key is valid.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen p-8 bg-gray-100 text-center">
-      <h1 className="text-3xl font-bold mb-4">Interior Design Visualizer</h1>
-
-      <input
-        type="file"
-        accept="image/png"
-        onChange={(e) => setSelectedFile(e.target.files[0])}
-        className="mb-4"
-      />
-      
-      <button
-        onClick={handleGenerate}
-        className="ml-4 bg-blue-500 text-white px-4 py-2 rounded"
-        disabled={loading}
-      >
-        {loading ? "Generating..." : "Generate Design"}
-      </button>
-
-      {error && <p className="text-red-600 mt-4">{error}</p>}
-
-      {generatedImg && (
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold">Generated Design:</h2>
-          <img
-            src={generatedImg}
-            alt="Redesigned Room"
-            className="mt-2 max-w-md mx-auto rounded shadow-md"
-          />
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default App;
+if __name__ == '__main__':
+    app.run(debug=True)
